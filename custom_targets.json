@@ -1,0 +1,8 @@
+{
+    "canopen-example": {
+        "inherits": [
+            "NUCLEO_G431RB"
+        ],
+        "device_name": "STM32G431C6T6"
+    }
+}

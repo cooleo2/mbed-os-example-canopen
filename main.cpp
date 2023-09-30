@@ -7,6 +7,7 @@
 
 #include "CANopen.h"
 #include "config.h"
+#include <chrono>
 
 extern "C" {
 #include "CO_driver.h"
@@ -29,8 +30,8 @@ Timer rtPerfTimer;
 
 
 
-DigitalOut userLed(LED2, 1);
-DigitalIn userButton(USER_BUTTON);
+DigitalOut userLed(LED1, 1);
+DigitalIn userButton(BUTTON1);
 
 
 
@@ -50,7 +51,7 @@ int main()
         CO_ReturnError_t err = CO_init((void*)CAN_MODULE_ADDRESS, CANOPEN_DEFAULT_NODE_ID, CAN_BITRATE);
         if(err != CO_ERROR_NO){
             printf("ERROR: CO_init, code: %d\n", err);
-            ThisThread::sleep_for(3000);   // in ms
+            ThisThread::sleep_for(std::chrono::milliseconds(3000));   // in ms
             break;
         }
 
@@ -141,7 +142,7 @@ static void rtTask(void)
     // using nanos instead, however mbed doesn't allow that. The benefit would
     // be that we could sleep only the time needed to fit exactly 
     // 1 ms taking into account the time to execute the RT code below.
-    while(!ThisThread::flags_wait_any_for(STOP_THREADS_FLAG, RTTHREAD_INTERVAL_1000US/1000)) {
+    while(!ThisThread::flags_wait_any_for(STOP_THREADS_FLAG, std::chrono::milliseconds(RTTHREAD_INTERVAL_1000US/1000))) {
 
         CO_timer1ms++;
 
@@ -149,7 +150,7 @@ static void rtTask(void)
             // We use a Timer to measure the RT thread execution time.
             // In case of bad performance, an EMCY msg will be created later on.
             rtPerfTimer.reset();
-            int begin = rtPerfTimer.read_us();
+            int begin = std::chrono::duration_cast<std::chrono::microseconds>(rtPerfTimer.elapsed_time()).count();
 
             // perform RT tasks
             // NOTE: DO NOT PERFORM ANY PRINTF ACTIONS IN THE RT_LOOP,
@@ -158,7 +159,7 @@ static void rtTask(void)
             rtLoop();
 
             //calculate time spend executing RT code, send EMCY in case of bad performance (>1ms)
-            int timespan = rtPerfTimer.read_us() - begin;
+            int timespan = std::chrono::duration_cast<std::chrono::microseconds>(rtPerfTimer.elapsed_time()).count() - begin;
             if(timespan > RTTHREAD_INTERVAL_1000US) {
                 float tsMillis = static_cast<double>(timespan) / 1000;
                 printf("RT slow: %.3fms\n", tsMillis);
